@@ -734,8 +734,490 @@ print Person.how_many()
 通过标记一个 `@classmethod`，该方法将绑定到 Person 类上，而非类的实例。类方法的第一个参数将传入类本身，通常将参数名命名为 cls，上面的 cls.count 实际上相当于 Person.count。
 
 因为是在类上调用，而非实例上调用，因此类方法无法获得任何实例变量，只能获得类的引用。
+### 24. Python中什么是继承
+继承的好处：
+```
+* 复用已有代码
+* 自动拥有了现有类的所有功能
+* 只需要编写缺少的新功能
+```
+### 25. Python中继承一个类
+如果已经定义了Person类，需要定义新的Student和Teacher类时，可以直接从Person类继承：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+定义Student类时，只需要把额外的属性加上，例如score：
+class Student(Person):
+    def __init__(self, name, gender, score):
+        super(Student, self).__init__(name, gender)
+        self.score = score
+```
+一定要用` super(Student, self).__init__(name, gender) `去初始化父类，否则，继承自 Person 的 Student 将没有 name 和 gender。
 
+函数super(Student, self)将返回当前类继承的父类，即 Person ，然后调用`__init__()`方法，注意self参数已在super()中传入，在`__init__()`中将隐式传递，不需要写出（也不能写）。
+### 26. Python中判断类型
+函数`isinstance()`可以判断一个变量的类型，既可以用在Python内置的数据类型如str、list、dict，也可以用在我们自定义的类，它们本质上都是数据类型。
+假设有如下的 Person、Student 和 Teacher 的定义及继承关系如下：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
 
+class Student(Person):
+    def __init__(self, name, gender, score):
+        super(Student, self).__init__(name, gender)
+self.score = score
+
+class Teacher(Person):
+    def __init__(self, name, gender, course):
+        super(Teacher, self).__init__(name, gender)
+        self.course = course
+
+p = Person('Tim', 'Male')
+s = Student('Bob', 'Male', 88)
+t = Teacher('Alice', 'Female', 'English')
+```
+当我们拿到变量 p、s、t 时，可以使用 isinstance 判断类型：
+```
+>>> isinstance(p, Person)
+True    # p是Person类型
+>>> isinstance(p, Student)
+False   # p不是Student类型
+>>> isinstance(p, Teacher)
+False   # p不是Teacher类型
+```
+这说明在继承链上，一个父类的实例不能是子类类型，因为子类比父类多了一些属性和方法。
+
+我们再考察 s ：
+```
+>>> isinstance(s, Person)
+True    # s是Person类型
+>>> isinstance(s, Student)
+True    # s是Student类型
+>>> isinstance(s, Teacher)
+False   # s不是Teacher类型
+```
+s 是Student类型，不是Teacher类型，这很容易理解。但是，s 也是Person类型，因为Student继承自Person，虽然它比Person多了一些属性和方法，但是，把 s 看成Person的实例也是可以的。
+
+这说明在一条继承链上，一个实例可以看成它本身的类型，也可以看成它父类的类型。
+### 27. Python中多态
+类具有继承关系，并且子类类型可以向上转型看做父类类型，如果我们从 Person 派生出 Student和Teacher ，并都写了一个 whoAmI() 方法：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+    def whoAmI(self):
+        return 'I am a Person, my name is %s' % self.name
+
+class Student(Person):
+    def __init__(self, name, gender, score):
+        super(Student, self).__init__(name, gender)
+        self.score = score
+    def whoAmI(self):
+        return 'I am a Student, my name is %s' % self.name
+
+class Teacher(Person):
+    def __init__(self, name, gender, course):
+        super(Teacher, self).__init__(name, gender)
+        self.course = course
+    def whoAmI(self):
+        return 'I am a Teacher, my name is %s' % self.name
+```
+在一个函数中，如果我们接收一个变量 x，则无论该 x 是 Person、Student还是 Teacher，都可以正确打印出结果：
+```
+def who_am_i(x):
+    print x.whoAmI()
+p = Person('Tim', 'Male')
+s = Student('Bob', 'Male', 88)
+t = Teacher('Alice', 'Female', 'English')
+
+who_am_i(p)
+who_am_i(s)
+who_am_i(t)
+运行结果：
+I am a Person, my name is Tim
+I am a Student, my name is Bob
+I am a Teacher, my name is Alice
+```
+这种行为称为**多态**。也就是说，*方法调用将作用在 x 的实际类型上*。s 是Student类型，它实际上拥有自己的 whoAmI()方法以及从 Person继承的 whoAmI方法，但调用`s.whoAmI()`总是先查找它自身的定义，如果没有定义，则顺着继承链向上查找，直到在某个父类中找到为止。
+
+由于Python是动态语言，所以，传递给函数`who_am_i(x)`的参数 x 不一定是 Person 或 Person 的子类型。任何数据类型的实例都可以，只要它有一个whoAmI()的方法即可：
+```
+class Book(object):
+    def whoAmI(self):
+        return 'I am a book'
+```
+这是动态语言和静态语言（例如Java）最大的差别之一。**动态语言调用实例方法，不检查类型，只要方法存在，参数正确，就可以调用。**
+### 28. Python中多重继承
+除了从一个父类继承外，Python允许从多个父类继承，称为*多重继承*。
+
+多重继承的继承链就不是一棵树了，它像这样：
+```
+class A(object):
+    def __init__(self, a):
+        print 'init A...'
+        self.a = a
+
+class B(A):
+    def __init__(self, a):
+        super(B, self).__init__(a)
+        print 'init B...'
+
+class C(A):
+    def __init__(self, a):
+        super(C, self).__init__(a)
+        print 'init C...'
+
+class D(B, C):
+    def __init__(self, a):
+        super(D, self).__init__(a)
+        print 'init D...'
+```
+像这样，D 同时继承自 B 和 C，也就是 D 拥有了 A、B、C 的全部功能。多重继承通过`super()`调用`__init__()`方法时，A 虽然被继承了两次，但`__init__()`只调用一次：
+
+多重继承的目的是从两种继承树中分别选择并继承出子类，以便组合功能使用。
+
+> 举个例子，Python的网络服务器有TCPServer、UDPServer、UnixStreamServer、UnixDatagramServer，而服务器运行模式有 多进程ForkingMixin 和 多线程ThreadingMixin两种。
+要创建多进程模式的 TCPServer：
+> class MyTCPServer(TCPServer, ForkingMixin)
+>     pass
+> 要创建多线程模式的 UDPServer：
+> class MyUDPServer(UDPServer, ThreadingMixin):
+>     pass
+> 如果没有多重继承，要实现上述所有可能的组合需要 4x2=8 个子类。
+### 29. Python中获取对象信息
+拿到一个变量，除了用 `isinstance()` 判断它是否是某种类型的实例外，还有没有别的方法获取到更多的信息呢？
+
+例如，已有定义：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+
+class Student(Person):
+    def __init__(self, name, gender, score):
+        super(Student, self).__init__(name, gender)
+        self.score = score
+    def whoAmI(self):
+        return 'I am a Student, my name is %s' % self.name
+```
+首先可以用 `type()` 函数获取*变量的类型*，它返回一个 Type 对象：
+```
+>>> type(123)
+<type 'int'>
+>>> s = Student('Bob', 'Male', 88)
+>>> type(s)
+<class '__main__.Student'>
+```
+其次，可以用 `dir()` 函数获取*变量的所有属性*：
+```
+>>> dir(123)   # 整数也有很多属性...
+['__abs__', '__add__', '__and__', '__class__', '__cmp__', ...]
+
+>>> dir(s)
+['__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'gender', 'name', 'score', 'whoAmI']
+```
+对于实例变量，`dir()`返回所有实例属性，包括`__class__`这类有特殊意义的属性。注意到方法`whoAmI`也是 s 的一个属性。
+
+如何去掉`__xxx__`这类的特殊属性，只保留我们自己定义的属性？回顾一下`filter()`函数的用法。
+
+`dir()`返回的属性是字符串列表，如果已知一个属性名称，要获取或者设置对象的属性，就需要用 `getattr()` 和 `setattr( )`函数了：
+```
+>>> getattr(s, 'name')  # 获取name属性
+'Bob'
+
+>>> setattr(s, 'name', 'Adam')  # 设置新的name属性
+
+>>> s.name
+'Adam'
+
+>>> getattr(s, 'age')  # 获取age属性，但是属性不存在，报错：
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'Student' object has no attribute 'age'
+
+>>> getattr(s, 'age', 20)  # 获取age属性，如果属性不存在，就返回默认值20：
+20
+```
+### 30. Python中 `__str__`和`__repr__`
+如果要把一个类的实例变成 str，就需要实现特殊方法`__str__()`：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+    def __str__(self):
+        return '(Person: %s, %s)' % (self.name, self.gender)
+```
+现在，在交互式命令行下用 print 试试：
+```
+>>> p = Person('Bob', 'male')
+>>> print p
+(Person: Bob, male)
+```
+但是，如果直接敲变量 p：
+```
+>>> p
+<main.Person object at 0x10c941890>
+```
+似乎`__str__()` 不会被调用。
+因为 Python 定义了`__str__()`和`__repr__()`两种方法，`__str__()`用于显示给用户，而`__repr__()`用于显示给开发人员。
+有一个偷懒的定义__repr__的方法：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+    def __str__(self):
+        return '(Person: %s, %s)' % (self.name, self.gender)
+    __repr__ = __str__
+```
+### 31. Python中 `__cmp__`
+对 int、str 等内置数据类型排序时，Python的 `sorted()` 按照默认的比较函数 cmp 排序，但是，如果对一组 Student 类的实例排序时，就必须提供我们自己的特殊方法`__cmp__()`：
+```
+class Student(object):
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+    def __str__(self):
+        return '(%s: %s)' % (self.name, self.score)
+    __repr__ = __str__
+
+    def __cmp__(self, s):
+        if self.name < s.name:
+            return -1
+        elif self.name > s.name:
+            return 1
+        else:
+            return 0
+```
+上述 Student 类实现了__cmp__()方法，__cmp__用实例自身self和传入的实例 s 进行比较，如果 self 应该排在前面，就返回 -1，如果 s 应该排在前面，就返回1，如果两者相当，返回 0。
+
+Student类实现了按name进行排序：
+```
+>>> L = [Student('Tim', 99), Student('Bob', 88), Student('Alice', 77)]
+>>> print sorted(L)
+[(Alice: 77), (Bob: 88), (Tim: 99)]
+```
+注意: 如果list不仅仅包含 Student 类，则 `__cmp__` 可能会报错：
+```
+L = [Student('Tim', 99), Student('Bob', 88), 100, 'Hello']
+print sorted(L)
+```
+请思考如何解决。
+在`__cmp__()`方法中先判断要比较的对象的类型是否与已知对象类型相同，使用isinstance()方法
+### 32. Python中 `__len__`
+如果一个类表现得像一个list，要获取有多少个元素，就得用 `len()` 函数。
+
+要让 len() 函数工作正常，类必须提供一个特殊方法`__len__()`，它返回元素的个数。
+
+例如，我们写一个 Students 类，把名字传进去：
+```
+class Students(object):
+    def __init__(self, *args):
+        self.names = args
+    def __len__(self):
+        return len(self.names)
+```
+只要正确实现了__len__()方法，就可以用len()函数返回Students实例的“长度”：
+```
+>>> ss = Students('Bob', 'Alice', 'Tim')
+>>> print len(ss)
+3
+```
+### 33. Python中数学运算
+Python 提供的基本数据类型 int、float 可以做整数和浮点的四则运算以及乘方等运算。
+
+但是，四则运算不局限于int和float，还可以是有理数、矩阵等。
+
+要表示有理数，可以用一个Rational类来表示：
+```
+class Rational(object):
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+p、q 都是整数，表示有理数 p/q。
+```
+如果要让Rational进行+运算，需要正确实现`__add__`：
+```
+class Rational(object):
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+    def __add__(self, r):
+        return Rational(self.p * r.q + self.q * r.p, self.q * r.q)
+    def __str__(self):
+        return '%s/%s' % (self.p, self.q)
+    __repr__ = __str__
+```
+现在可以试试有理数加法：
+```
+>>> r1 = Rational(1, 3)
+>>> r2 = Rational(1, 2)
+>>> print r1 + r2
+5/6
+```
+### 34. Python中类型转换
+Rational类实现了有理数运算，但是，如果要把结果转为 int 或 float 怎么办？
+
+考察整数和浮点数的转换：
+```
+>>> int(12.34)
+12
+>>> float(12)
+12.0
+```
+如果要把 Rational 转为 int，应该使用：
+```
+r = Rational(12, 5)
+n = int(r)
+```
+要让`int()`函数正常工作，只需要实现特殊方法`__int__()`:
+```
+class Rational(object):
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+    def __int__(self):
+        return self.p // self.q
+```
+结果如下：
+```
+>>> print int(Rational(7, 2))
+3
+>>> print int(Rational(1, 3))
+0
+```
+同理，要让`float()`函数正常工作，只需要实现特殊方法`__float__()`。
+> **//**是商四舍五入的结果
+### 35. Python中 @property
+考察 Student 类：
+```
+class Student(object):
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+```
+当我们想要修改一个 Student 的 scroe 属性时，可以这么写：
+```
+s = Student('Bob', 59)
+s.score = 60
+但是也可以这么写：
+s.score = 1000
+```
+显然，直接给属性赋值无法检查分数的有效性。
+
+如果利用两个方法：
+```
+class Student(object):
+    def __init__(self, name, score):
+        self.name = name
+        self.__score = score
+    def get_score(self):
+        return self.__score
+    def set_score(self, score):
+        if score < 0 or score > 100:
+            raise ValueError('invalid score')
+        self.__score = score
+```
+这样一来，`s.set_score(1000)` 就会报错。
+
+这种使用 get/set 方法来封装对一个属性的访问在许多面向对象编程的语言中都很常见。
+
+但是写 `s.get_score()`和 `s.set_score()` 没有直接写 s.score 来得直接。
+
+因为Python支持高阶函数，在函数式编程中我们介绍了装饰器函数，可以用装饰器函数把 get/set 方法“装饰”成属性调用：
+```
+class Student(object):
+    def __init__(self, name, score):
+        self.name = name
+        self.__score = score
+    @property
+    def score(self):
+        return self.__score
+    @score.setter
+    def score(self, score):
+        if score < 0 or score > 100:
+            raise ValueError('invalid score')
+        self.__score = score
+```
+> 注意: 第一个score(self)是get方法，用@property装饰，第二个score(self, score)是set方法，用@score.setter装饰，@score.setter是前一个@property装饰后的副产品。
+
+现在，就可以像使用属性一样设置score了：
+```
+>>> s = Student('Bob', 59)
+>>> s.score = 60
+>>> print s.score
+60
+>>> s.score = 1000
+Traceback (most recent call last):
+  ...
+ValueError: invalid score
+```
+说明对 score 赋值实际调用的是 set方法。
+### 36. Python中 `__slots__`
+由于Python是动态语言，任何实例在运行期都可以动态地添加属性。
+
+如果要限制添加的属性，例如，Student类只允许添加 name、gender和score 这3个属性，就可以利用Python的一个特殊的`__slots__`来实现。
+
+顾名思义，__slots__是指一个类允许的属性列表：
+```
+class Student(object):
+    __slots__ = ('name', 'gender', 'score')
+    def __init__(self, name, gender, score):
+        self.name = name
+        self.gender = gender
+        self.score = score
+```
+现在，对实例进行操作：
+```
+>>> s = Student('Bob', 'male', 59)
+>>> s.name = 'Tim' # OK
+>>> s.score = 99 # OK
+>>> s.grade = 'A'
+Traceback (most recent call last):
+  ...
+AttributeError: 'Student' object has no attribute 'grade'
+```
+`__slots__`的目的是限制当前类所能拥有的属性，如果不需要添加任意动态的属性，*使用__slots__也能节省内存*。
+### 37. python中 `__call__`
+在Python中，函数其实是一个对象：
+```
+>>> f = abs
+>>> f.__name__
+'abs'
+>>> f(-123)
+123
+```
+由于 f 可以被调用，所以，f 被称为可调用对象。
+
+所有的函数都是可调用对象。
+
+一个类实例也可以变成一个可调用对象，只需要实现一个特殊方法`__call__()`。
+我们把 Person 类变成一个可调用对象：
+```
+class Person(object):
+    def __init__(self, name, gender):
+        self.name = name
+        self.gender = gender
+
+    def __call__(self, friend):
+        print 'My name is %s...' % self.name
+        print 'My friend is %s...' % friend
+```
+现在可以对 Person 实例直接调用：
+```
+>>> p = Person('Bob', 'male')
+>>> p('Tim')
+My name is Bob...
+My friend is Tim...
+```
+单看 `p('Tim')` 你无法确定 p 是一个函数还是一个类实例，所以，*在Python中，函数也是对象*，对象和函数的区别并不显著。
 
 
 
